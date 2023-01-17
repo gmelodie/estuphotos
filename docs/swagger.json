@@ -1,0 +1,192 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "title": "People API",
+        "contact": {},
+        "version": "2.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "API greeting message",
+                "responses": {
+                    "200": {
+                        "description": ""
+                    }
+                }
+            }
+        },
+        "/person": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create a new Person",
+                "parameters": [
+                    {
+                        "description": "first name",
+                        "name": "firstName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "last name",
+                        "name": "lastName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "age",
+                        "name": "age",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/main.Person"
+                        }
+                    }
+                }
+            }
+        },
+        "/person/{firstName}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Find a registered Person",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "first name",
+                        "name": "firstName",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Person"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Update a registered Person",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "original first name",
+                        "name": "firstName",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "new first name",
+                        "name": "firstName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "new last name",
+                        "name": "lastName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "new age",
+                        "name": "age",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Person"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Delete a registered Person",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "first name",
+                        "name": "firstName",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "deleted successfully"
+                    },
+                    "404": {
+                        "description": "entry to delete not found"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.Person": {
+            "type": "object",
+            "properties": {
+                "age": {
+                    "type": "integer"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastName": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
