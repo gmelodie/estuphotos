@@ -24,12 +24,12 @@ const docTemplate = `{
                 "summary": "API greeting message",
                 "responses": {
                     "200": {
-                        "description": ""
+                        "description": "OK"
                     }
                 }
             }
         },
-        "/person": {
+        "/photo": {
             "post": {
                 "consumes": [
                     "application/json"
@@ -37,33 +37,15 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Create a new Person",
+                "summary": "Upload a new Photo",
                 "parameters": [
                     {
-                        "description": "first name",
-                        "name": "firstName",
+                        "description": "name of the photo",
+                        "name": "name",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "type": "string"
-                        }
-                    },
-                    {
-                        "description": "last name",
-                        "name": "lastName",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "age",
-                        "name": "age",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
                         }
                     }
                 ],
@@ -71,23 +53,23 @@ const docTemplate = `{
                     "202": {
                         "description": "Accepted",
                         "schema": {
-                            "$ref": "#/definitions/main.Person"
+                            "$ref": "#/definitions/main.Photo"
                         }
                     }
                 }
             }
         },
-        "/person/{firstName}": {
+        "/photo/{cid}": {
             "get": {
                 "produces": [
                     "application/json"
                 ],
-                "summary": "Find a registered Person",
+                "summary": "Download existing photo",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "first name",
-                        "name": "firstName",
+                        "name": "cid",
                         "in": "query",
                         "required": true
                     }
@@ -96,101 +78,45 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.Person"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "Update a registered Person",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "original first name",
-                        "name": "firstName",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "new first name",
-                        "name": "firstName",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
                             "type": "string"
                         }
-                    },
-                    {
-                        "description": "new last name",
-                        "name": "lastName",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "new age",
-                        "name": "age",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/main.Person"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "produces": [
-                    "application/json"
-                ],
-                "summary": "Delete a registered Person",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "first name",
-                        "name": "firstName",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "deleted successfully"
-                    },
-                    "404": {
-                        "description": "entry to delete not found"
                     }
                 }
             }
         }
     },
     "definitions": {
-        "main.Person": {
+        "main.Photo": {
             "type": "object",
             "properties": {
-                "age": {
-                    "type": "integer"
-                },
-                "firstName": {
+                "cid": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "lastName": {
+                "name": {
                     "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/main.User"
+                }
+            }
+        },
+        "main.User": {
+            "type": "object",
+            "properties": {
+                "apikey": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "handle": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
                 }
             }
         }

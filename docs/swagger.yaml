@@ -1,15 +1,26 @@
 basePath: /
 definitions:
-  main.Person:
+  main.Photo:
     properties:
-      age:
-        type: integer
-      firstName:
+      cid:
         type: string
       id:
         type: integer
-      lastName:
+      name:
         type: string
+      owner:
+        $ref: '#/definitions/main.User'
+    type: object
+  main.User:
+    properties:
+      apikey:
+        type: string
+      email:
+        type: string
+      handle:
+        type: string
+      id:
+        type: integer
     type: object
 info:
   contact: {}
@@ -22,60 +33,33 @@ paths:
       - application/json
       responses:
         "200":
-          description: ""
+          description: OK
       summary: API greeting message
-  /person:
+  /photo:
     post:
       consumes:
       - application/json
       parameters:
-      - description: first name
+      - description: name of the photo
         in: body
-        name: firstName
+        name: name
         required: true
         schema:
           type: string
-      - description: last name
-        in: body
-        name: lastName
-        required: true
-        schema:
-          type: string
-      - description: age
-        in: body
-        name: age
-        required: true
-        schema:
-          type: integer
       produces:
       - application/json
       responses:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/main.Person'
-      summary: Create a new Person
-  /person/{firstName}:
-    delete:
-      parameters:
-      - description: first name
-        in: query
-        name: firstName
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: deleted successfully
-        "404":
-          description: entry to delete not found
-      summary: Delete a registered Person
+            $ref: '#/definitions/main.Photo'
+      summary: Upload a new Photo
+  /photo/{cid}:
     get:
       parameters:
       - description: first name
         in: query
-        name: firstName
+        name: cid
         required: true
         type: string
       produces:
@@ -84,41 +68,8 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.Person'
-      summary: Find a registered Person
-    put:
-      parameters:
-      - description: original first name
-        in: query
-        name: firstName
-        required: true
-        type: string
-      - description: new first name
-        in: body
-        name: firstName
-        required: true
-        schema:
-          type: string
-      - description: new last name
-        in: body
-        name: lastName
-        required: true
-        schema:
-          type: string
-      - description: new age
-        in: body
-        name: age
-        required: true
-        schema:
-          type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/main.Person'
-      summary: Update a registered Person
+            type: string
+      summary: Download existing photo
 schemes:
 - http
 swagger: "2.0"
