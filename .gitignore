@@ -1,3 +1,8 @@
 estuphotos
 .env
 env
+edge-ur
+estuphotos.db
+libp2p.key
+.whypfs/
+
