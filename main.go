@@ -2,69 +2,69 @@ package main
 
 import (
 	"context"
+	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/application-research/edge-ur/core"
+	"golang.org/x/xerrors"
 
 	_ "github.com/gmelodie/estuphotos/docs"
+	"github.com/gmelodie/estuphotos/util"
 	"github.com/spf13/viper"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 var log = logging.Logger("estuphotos")
-
-type Photo struct {
-	gorm.Model
-	Name   string `json:"name"`
-	UserID uint   `json:"user_id"`
-	CID    string `json:"cid"`
-}
-
-type User struct {
-	gorm.Model
-	Handle string  `json:"handle"`
-	Email  string  `json:"email"`
-	ApiKey string  `json:"apikey"`
-	Photos []Photo `json:photos`
-}
 
 type API struct {
 	DB        *gorm.DB
 	LightNode *core.LightNode
 }
 
-type HttpError struct {
-	Code    int    `json:"code,omitempty"`
-	Reason  string `json:"reason"`
-	Details string `json:"details"`
-}
+func (a *API) AuthRequired() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 
-func (he HttpError) Error() string {
-	if he.Details == "" {
-		return he.Reason
+			//	Check first if the Token is available. We should not continue if the
+			//	token isn't even available.
+			auth, err := util.ExtractAuth(c)
+			if err != nil {
+				return err
+			}
+
+			u, err := a.checkTokenAuth(auth)
+			if err != nil {
+				return err
+			}
+
+			c.Set("user", u)
+			return next(c)
+		}
 	}
-	return he.Reason + ": " + he.Details
 }
 
-func withUser(f func(echo.Context, *User) error) func(echo.Context) error {
-	return func(c echo.Context) error {
-		u, ok := c.Get("user").(*User)
-		if !ok {
-			return &HttpError{
+func (a *API) checkTokenAuth(token string) (*util.User, error) {
+	var user util.User
+	if err := a.DB.First(&user, "apikey = ?", token).Error; err != nil {
+		if xerrors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, &util.HttpError{
 				Code:    http.StatusUnauthorized,
-				Reason:  "invalid API key",
-				Details: "endpoint not called with proper authentication",
+				Reason:  "Invalid Token",
+				Details: "no user exists for the spicified api key",
 			}
 		}
-		return f(c, u)
+		return nil, err
 	}
+
+	return &user, nil
 }
 
 // handleIndex godoc
@@ -76,6 +76,31 @@ func (a *API) handleIndex(c echo.Context) error {
 	return c.JSON(http.StatusOK, "Welcome to EstuPhotos")
 }
 
+// handleUserRegister godoc
+// @Summary  Register a new user
+// @Accept   json
+// @Produce  json
+// @Success  202        {object}  User
+// @Router   /user/{username} [post]
+func (a *API) handleUserRegister(c echo.Context) error {
+	username := c.Param("username")
+
+	apiKey := util.GenerateToken(64)
+	// add user to our own database
+	newUser := util.User{
+		Handle: username,
+		ApiKey: apiKey,
+	}
+
+	err := a.DB.Create(&newUser).Error
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	return c.JSON(http.StatusCreated, newUser)
+
+}
+
 // handleUploadPhoto godoc
 // @Summary  Upload a new Photo
 // @Accept   json
@@ -83,7 +108,19 @@ func (a *API) handleIndex(c echo.Context) error {
 // @Param    name  body      string  true  "name of the photo"
 // @Success  202        {object}  Photo
 // @Router   /photo [post]
-func (a *API) handlePhotoUpload(c echo.Context) error { // TODO: add user
+func (a *API) handlePhotoUpload(c echo.Context, u *util.User) error {
+
+	// authenticate user
+	auth, err := util.ExtractAuth(c)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+	err = a.DB.First(&util.User{}).
+		Where("apikey = ?", auth).
+		Error
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
 
 	// get file information from formdata
 	form, err := c.MultipartForm()
@@ -133,11 +170,12 @@ func (a *API) handlePhotoUpload(c echo.Context) error { // TODO: add user
 	a.LightNode.DB.Create(&content)
 
 	// add file to our own database
-	newPhoto := Photo{
-		Name: filename,
-		CID:  content.Cid,
+	newPhoto := util.Photo{
+		Name:   filename,
+		CID:    content.Cid,
+		UserID: u.ID,
 	}
-	err = a.DB.Save(&newPhoto).Error
+	err = a.DB.Create(&newPhoto).Error
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -152,11 +190,11 @@ func (a *API) handlePhotoUpload(c echo.Context) error { // TODO: add user
 // @Success  200        {object}  string
 // @Router   /photo/{cid} [get]
 func (a *API) handlePhotoDownload(c echo.Context) error {
-	cid := c.Param("cid")
+	cidStr := c.Param("cid")
 
-	var photo Photo
-	err := a.DB.Model(&Photo{}).
-		Where("cid = ?", cid).
+	var photo util.Photo
+	err := a.DB.Model(&util.Photo{}).
+		Where("cid = ?", cidStr).
 		Scan(&photo).
 		Error
 	if err != nil {
@@ -165,19 +203,18 @@ func (a *API) handlePhotoDownload(c echo.Context) error {
 
 	// If photo is in the database, retrieve it
 	// TODO: retrieve photo
-
-	return c.JSON(http.StatusOK, photo)
-}
-
-func createDatabase() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open("estuphotos.db"), &gorm.Config{})
+	parsedCID, err := cid.Parse(photo.CID)
 	if err != nil {
-		return nil, err
+		return c.JSON(http.StatusBadRequest, err)
 	}
-	db.AutoMigrate(&Photo{})
-	db.AutoMigrate(&User{})
 
-	return db, nil
+	photoReader, err := a.LightNode.Node.GetFile(context.Background(), parsedCID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	return c.Stream(http.StatusOK, "application/octet-stream", photoReader)
+	// return c.JSON(http.StatusOK, photoReader)
 }
 
 // @title EstuPhotos
@@ -188,6 +225,8 @@ func createDatabase() (*gorm.DB, error) {
 func main() {
 	var api API
 	var err error
+
+	rand.Seed(time.Now().UnixNano())
 
 	logging.SetLogLevel("edge-ur", "debug")
 
@@ -207,20 +246,23 @@ func main() {
 	}
 
 	// start database
-	api.DB, err = createDatabase()
+	api.DB, err = util.CreateDatabase()
 	if err != nil {
 		log.Fatal("could not create or open database: %s", err)
 		panic(err)
 	}
 
 	e := echo.New()
+	e.Pre(middleware.RemoveTrailingSlash())
+	e.Use(middleware.Logger())
 
 	e.GET("/", api.handleIndex)
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
-	// e.POST("/photo", withUser(api.handlePhotoUpload))
-	// e.GET("/photo/:cid", withUser(api.handlePhotoDownload))
-	e.POST("/photo", api.handlePhotoUpload)
+	e.POST("/user/:username", api.handleUserRegister)
+
+	e.POST("/photo", util.WithUser(api.handlePhotoUpload), api.AuthRequired())
+	// e.POST("/photo", api.handlePhotoUpload)
 	e.GET("/photo/:cid", api.handlePhotoDownload)
 
 	e.Logger.Fatal(e.Start(":8080"))
